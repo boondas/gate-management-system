@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit User</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Edit User</h1>
+        <form action="/edit_user/{{ user_id }}" method="post">
+            <label for="phone_number">Phone Number:</label>
+            <input type="text" id="phone_number" name="phone_number" value="{{ user[0] }}" required>
+            <br>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" value="{{ user[1] }}" required>
+            <br>
+            <label for="access">Access:</label>
+            <input type="checkbox" id="access" name="access" {% if user[2] %}checked{% endif %}>
+            <br>
+            <button type="submit" class="btn">Save Changes</button>
+        </form>
+        <a href="/" class="btn back">Go Back</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add User</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Add User</h1>
+        <form action="/add_user" method="post">
+            <label for="phone_number">Phone Number:</label>
+            <input type="text" id="phone_number" name="phone_number" required>
+            <br>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            <br>
+            <label for="access">Access:</label>
+            <input type="checkbox" id="access" name="access">
+            <br>
+            <button type="submit" class="btn">Add User</button>
+        </form>
+        <a href="/" class="btn back">Go Back</a>
+    </div>
+</body>
+</html>

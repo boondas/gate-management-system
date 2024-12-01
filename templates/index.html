@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Management System</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Gate Management System</h1>
+    <a href="/add_user" class="btn">Add User</a>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Phone Number</th>
+                <th>Name</th>
+                <th>Access</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[0] }}</td>
+                <td>{{ user[1] }}</td>
+                <td>{{ user[2] }}</td>
+                <td>{{ "Yes" if user[3] else "No" }}</td>
+                <td>
+                    <a href="/edit_user/{{ user[0] }}">Edit</a>
+                    <form action="/delete_user/{{ user[0] }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
