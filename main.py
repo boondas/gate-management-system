@@ -1,27 +1,83 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import os
 import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
-def connect_to_database():
-    # Fetch the DATABASE_URL environment variable
-    DATABASE_URL = os.getenv(postgres://uf8dggiba24i76:p9c124a134a00bf372ab46ca587a95af4e21473d2dbea5657c9a2b228abbe5bce@c3nv2ev86aje4j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/de18ue68rrh2g1)
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL is not set.")
-    
-    # Connect to the database
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+# Get the database URL from the environment variable
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Function to connect to the database
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
+        return conn
+    except Exception as e:
+        print(f"Error connecting to the database: {e}")
+        return None
 
 @app.route("/")
-def home():
+def index():
+    return jsonify({"message": "Welcome to the Gate Management System API!"})
+
+@app.route("/add", methods=["POST"])
+def add_phone_number():
     try:
-        # Establish connection to the database
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 'Database connection successful!'")
-        message = cursor.fetchone()
-        return jsonify({"message": message[0]})
+        data = request.json
+        phone_number = data.get("phone_number")
+
+        if not phone_number:
+            return jsonify({"error": "Phone number is required"}), 400
+
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO authorized_users (phone_number) VALUES (%s)", (phone_number,))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return jsonify({"message": "Phone number added successfully"}), 201
+        else:
+            return jsonify({"error": "Database connection error"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/remove", methods=["DELETE"])
+def remove_phone_number():
+    try:
+        data = request.json
+        phone_number = data.get("phone_number")
+
+        if not phone_number:
+            return jsonify({"error": "Phone number is required"}), 400
+
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM authorized_users WHERE phone_number = %s", (phone_number,))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return jsonify({"message": "Phone number removed successfully"}), 200
+        else:
+            return jsonify({"error": "Database connection error"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/list", methods=["GET"])
+def list_phone_numbers():
+    try:
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor()
+            cur.execute("SELECT phone_number FROM authorized_users")
+            phone_numbers = cur.fetchall()
+            cur.close()
+            conn.close()
+            return jsonify({"phone_numbers": phone_numbers}), 200
+        else:
+            return jsonify({"error": "Database connection error"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
