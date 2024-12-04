@@ -4,5 +4,6 @@ pyserial
 openpyxl
 gunicorn
 requests
+python-dotenv
 
 

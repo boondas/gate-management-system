@@ -1,51 +1,42 @@
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor  # For better query results handling
-from flask import Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
 from urllib.parse import urlparse
 from dotenv import load_dotenv  # To load environment variables
+import psycopg2
+from flask import Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
 
-# Load environment variables from a .env file
+# Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
 
 # Database Connection
 def connect_to_database():
-    url = urlparse(os.getenv('DATABASE_URL'))  # Heroku provides DATABASE_URL
-    conn = psycopg2.connect(
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise Exception("DATABASE_URL is not set in environment variables.")
+
+    # Parse DATABASE_URL to extract connection components
+    url = urlparse(database_url)
+    return psycopg2.connect(
         host=url.hostname,
-        database=url.path[1:],
+        database=url.path[1:],  # Remove leading slash from the database name
         user=url.username,
         password=url.password,
         port=url.port
     )
 
-    # Create the table if it doesn't exist
-    with conn.cursor() as cursor:
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            phone_number VARCHAR(15) UNIQUE NOT NULL,
-            name VARCHAR(100) NOT NULL,
-            access BOOLEAN NOT NULL
-        );
-        """)
-        conn.commit()
-
-    return conn
 # Home Route
 @app.route('/')
 def home():
     try:
         conn = connect_to_database()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)  # Use RealDictCursor for better JSON support
-        cursor.execute("SELECT id, phone_number, name, access FROM users ORDER BY id")
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, phone_number, name, access FROM users")
         users = cursor.fetchall()
         conn.close()
         return render_template('index.html', users=users)
     except Exception as e:
-        return f"Error fetching users: {e}", 500
+        return f"Error fetching users: {str(e)}", 500
 
 # Add User Route
 @app.route('/add_user', methods=['GET', 'POST'])
@@ -62,20 +53,15 @@ def add_user():
             conn = connect_to_database()
             cursor = conn.cursor()
             cursor.execute(
-                """
-                INSERT INTO users (phone_number, name, access) 
-                VALUES (%s, %s, %s) 
-                ON CONFLICT (phone_number) 
-                DO UPDATE SET name = EXCLUDED.name, access = EXCLUDED.access
-                """,
+                "INSERT INTO users (phone_number, name, access) VALUES (%s, %s, %s) "
+                "ON CONFLICT (phone_number) DO UPDATE SET name = EXCLUDED.name, access = EXCLUDED.access",
                 (phone_number, name, access)
             )
             conn.commit()
             conn.close()
             return redirect(url_for('home'))
         except Exception as e:
-            return f"Error adding user: {e}", 500
-
+            return f"Error adding user: {str(e)}", 500
     return render_template('add_user.html')
 
 # Edit User Route
@@ -83,7 +69,7 @@ def add_user():
 def edit_user(user_id):
     try:
         conn = connect_to_database()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
 
         if request.method == 'POST':
             phone_number = request.form.get('phone_number')
@@ -103,7 +89,7 @@ def edit_user(user_id):
         conn.close()
         return render_template('edit_user.html', user_id=user_id, user=user)
     except Exception as e:
-        return f"Error editing user: {e}", 500
+        return f"Error editing user: {str(e)}", 500
 
 # Delete User Route
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
@@ -116,7 +102,7 @@ def delete_user(user_id):
         conn.close()
         return redirect(url_for('home'))
     except Exception as e:
-        return f"Error deleting user: {e}", 500
+        return f"Error deleting user: {str(e)}", 500
 
 # Validation API for ESP32
 @app.route('/validate_user', methods=['GET'])
@@ -141,7 +127,7 @@ def validate_user():
         else:
             return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
     except Exception as e:
-        return jsonify({"status": "ERROR", "message": f"Error validating user: {e}"}), 500
+        return jsonify({"status": "ERROR", "message": str(e)}), 500
 
 # Serve Static Files
 @app.route('/static/<path:filename>')
