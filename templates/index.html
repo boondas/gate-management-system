@@ -9,13 +9,12 @@
 <body>
     <h1>Gate Management System</h1>
     <a href="/add_user" class="btn">Add User</a>
+    <a href="/logout" class="btn">Logout</a>
     <table>
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Phone Number</th>
-                <th>Name</th>
-                <th>Access</th>
+                <th>Username</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -24,8 +23,6 @@
             <tr>
                 <td>{{ user[0] }}</td>
                 <td>{{ user[1] }}</td>
-                <td>{{ user[2] }}</td>
-                <td>{{ "Yes" if user[3] else "No" }}</td>
                 <td>
                     <a href="/edit_user/{{ user[0] }}">Edit</a>
                     <form action="/delete_user/{{ user[0] }}" method="post" style="display:inline;">

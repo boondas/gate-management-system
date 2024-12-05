@@ -9,15 +9,12 @@
 <body>
     <div class="container">
         <h1>Edit User</h1>
-        <form action="/edit_user/{{ user_id }}" method="post">
-            <label for="phone_number">Phone Number:</label>
-            <input type="text" id="phone_number" name="phone_number" value="{{ user[0] }}" required>
+        <form action="/edit_user/{{ user[0] }}" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" value="{{ user[1] }}" required>
             <br>
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" value="{{ user[1] }}" required>
-            <br>
-            <label for="access">Access:</label>
-            <input type="checkbox" id="access" name="access" {% if user[2] %}checked{% endif %}>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
             <br>
             <button type="submit" class="btn">Save Changes</button>
         </form>
