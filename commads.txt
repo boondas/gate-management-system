@@ -1,0 +1,4 @@
+heroku git:remote -a gate-database
+git push heroku main
+heroku auth:token
+HRKU-021cf6d4-4f27-4284-a4e2-4b4cacd7ac9a

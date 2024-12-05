@@ -1,4 +1,5 @@
 import os
+import re
 from urllib.parse import urlparse
 from dotenv import load_dotenv  # To load environment variables
 import psycopg2
@@ -111,10 +112,13 @@ def validate_user():
     if not phone_number:
         return jsonify({"status": "ERROR", "message": "Phone number is required"}), 400
 
+    # Clean up phone number (remove all non-numeric characters except the '+')
+    phone_number = re.sub(r'\D', '', phone_number)  # Removes all non-digit characters
+
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, access FROM users WHERE phone_number = %s", (phone_number,))
+        cursor.execute("SELECT name, access FROM users WHERE REPLACE(phone_number, '+', '') = %s", (phone_number,))
         result = cursor.fetchone()
         conn.close()
 
