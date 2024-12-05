@@ -1,0 +1,163 @@
+style.css
+body {
+    font-family: 'Arial', sans-serif;
+    background: #e9ecef;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    font-size: 36px;
+    background-color: #007bff;
+    color: white;
+    padding: 20px;
+}
+
+.container {
+    width: 80%;
+    margin: auto;
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: #007bff;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+a, button {
+    padding: 10px;
+    text-decoration: none;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+a:hover, button:hover {
+    background: #0056b3;
+}
+
+add_user.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add User</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Add User</h1>
+        <form action="/add_user" method="post">
+            <label for="phone_number">Phone Number:</label>
+            <input type="text" id="phone_number" name="phone_number" required>
+            <br>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            <br>
+            <label for="access">Access:</label>
+            <input type="checkbox" id="access" name="access">
+            <br>
+            <button type="submit" class="btn">Add User</button>
+        </form>
+        <a href="/" class="btn back">Go Back</a>
+    </div>
+</body>
+</html>
+
+edit_user.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit User</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Edit User</h1>
+        <form action="/edit_user/{{ user_id }}" method="post">
+            <label for="phone_number">Phone Number:</label>
+            <input type="text" id="phone_number" name="phone_number" value="{{ user[0] }}" required>
+            <br>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" value="{{ user[1] }}" required>
+            <br>
+            <label for="access">Access:</label>
+            <input type="checkbox" id="access" name="access" {% if user[2] %}checked{% endif %}>
+            <br>
+            <button type="submit" class="btn">Save Changes</button>
+        </form>
+        <a href="/" class="btn back">Go Back</a>
+    </div>
+</body>
+</html>
+
+index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Management System</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Gate Management System</h1>
+    <a href="/add_user" class="btn">Add User</a>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Phone Number</th>
+                <th>Name</th>
+                <th>Access</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[0] }}</td>
+                <td>{{ user[1] }}</td>
+                <td>{{ user[2] }}</td>
+                <td>{{ "Yes" if user[3] else "No" }}</td>
+                <td>
+                    <a href="/edit_user/{{ user[0] }}">Edit</a>
+                    <form action="/delete_user/{{ user[0] }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
