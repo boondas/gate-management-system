@@ -65,9 +65,8 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop('username', None)
-    flash("You have been logged out.", "success")
-    return redirect(url_for('login'))
+    session.clear()  # Clear all session data
+    return redirect(url_for('login'))  # Redirect to login page  
 
 @app.route('/')
 @login_required
@@ -177,10 +176,7 @@ def validate_user():
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
         
-@app.route('/logout')
-def logout():
-    session.clear()  # Clear all session data
-    return redirect(url_for('login'))  # Redirect to login page        
+      
 
 # Serve Static Files
 @app.route('/static/<path:filename>')
