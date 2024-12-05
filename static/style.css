@@ -57,3 +57,28 @@ a, button {
 a:hover, button:hover {
     background: #0056b3;
 }
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: #007bff;
+    color: white;
+}
+
+.header h1 {
+    margin: 0;
+}
+
+.header .logout {
+    background: #dc3545;
+    color: white;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.header .logout:hover {
+    background: #c82333;
+}

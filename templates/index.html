@@ -7,7 +7,10 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Gate Management System</h1>
+    <div class="header">
+        <h1>Gate Management System</h1>
+        <a href="/logout" class="btn logout">Logout</a>
+    </div>
     <a href="/add_user" class="btn">Add User</a>
     <table>
         <thead>

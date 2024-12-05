@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import psycopg2
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash
+from flask import session  # Ensure this is imported
 
 # Load environment variables
 load_dotenv()
@@ -74,7 +75,7 @@ def home():
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, phone_number, name, access FROM users")
+        cursor.execute("SELECT id, phone_number, name, access FROM users ORDER BY id ASC")  # Ensure sequential order
         users = cursor.fetchall()
         conn.close()
         return render_template('index.html', users=users)
@@ -175,6 +176,11 @@ def validate_user():
             return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
+        
+@app.route('/logout')
+def logout():
+    session.clear()  # Clear all session data
+    return redirect(url_for('login'))  # Redirect to login page        
 
 # Serve Static Files
 @app.route('/static/<path:filename>')
