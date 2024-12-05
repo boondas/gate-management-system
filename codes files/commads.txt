@@ -1,0 +1,6 @@
+heroku git:remote -a gate-database
+git add .
+git commit -m "UpdatedFlask app"
+git push heroku main
+heroku auth:token
+HRKU-2226ea50-7954-4e8a-8ca1-b6282bff5724
