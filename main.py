@@ -111,9 +111,9 @@ def validate_user():
     if not phone_number:
         return jsonify({"status": "ERROR", "message": "Phone number is required"}), 400
 
-    # Normalize phone number format (strip leading zeros if present)
-    if phone_number.startswith('0'):
-        phone_number = '+27' + phone_number[1:]  # Convert to international format
+    # Normalize phone number to the international format
+    if phone_number.startswith("0"):
+        phone_number = "+27" + phone_number[1:]
 
     try:
         conn = connect_to_database()
@@ -132,6 +132,7 @@ def validate_user():
             return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
+
 
 # Serve Static Files
 @app.route('/static/<path:filename>')
