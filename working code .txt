@@ -1,4 +1,143 @@
+ARDUINO CODE
+
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+// WiFi Configuration
+const char* ssid = "VC-1044-2255";
+const char* password = "bd32f6faf5";
+
+// Flask Server Endpoint
+const char* serverUrl = "https://gate-database-06187529afc2.herokuapp.com/validate_user";
+
+// SIM900 Configuration
+#define RXD2 16
+#define TXD2 17
+
+// Relay pin
+#define RELAY_PIN 2
+
+void sendATCommand(const char* command) {
+  Serial2.println(command);
+  delay(1000); // Wait for the command to process
+}
+
+String readSIM900() {
+  String response = "";
+  while (Serial2.available()) {
+    char c = Serial2.read();
+    response += c;
+  }
+  return response;
+}
+
+void setup() {
+  // Serial and SIM900 Configuration
+  Serial.begin(115200);
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+
+  // Configure Relay Pin
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+
+  // WiFi Connection
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+
+  // Initialize SIM900
+  sendATCommand("AT");            // Check communication
+  sendATCommand("ATE0");          // Disable echo
+  sendATCommand("AT+CLIP=1");     // Enable caller ID notification
+}
+
+void loop() {
+  if (Serial2.available()) {
+    String sim900Response = readSIM900();
+    Serial.println("SIM900 Response: " + sim900Response);
+
+    // Check for incoming call
+    if (sim900Response.indexOf("+CLIP:") != -1) {
+      String phoneNumber = extractPhoneNumber(sim900Response);
+      Serial.println("Incoming Call from: " + phoneNumber);
+
+      // Hang up the call
+      hangUpCall();
+
+      // Validate the phone number with Flask
+      validatePhoneNumber(phoneNumber);
+    }
+  }
+
+  delay(1000);
+}
+
+String extractPhoneNumber(String sim900Response) {
+  int start = sim900Response.indexOf("\"") + 1;
+  int end = sim900Response.indexOf("\"", start);
+  return sim900Response.substring(start, end); // Ensure the '+' sign is included
+}
+
+void hangUpCall() {
+  // Send ATH command to hang up the call
+  sendATCommand("ATH");
+  Serial.println("Call Hung Up");
+}
+
+void validatePhoneNumber(String phoneNumber) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = String(serverUrl) + "?phone_number=" + phoneNumber;
+
+    http.begin(url);
+    int httpCode = http.GET();
+
+    if (httpCode == 200) {
+      String payload = http.getString();
+      Serial.println("Validation Response: " + payload);
+
+      // Parse JSON response
+      StaticJsonDocument<200> doc;
+      DeserializationError error = deserializeJson(doc, payload);
+
+      if (error) {
+        Serial.print("JSON Parsing Failed: ");
+        Serial.println(error.c_str());
+        return;
+      }
+
+      const char* status = doc["status"];
+      Serial.print("Status: ");
+      Serial.println(status);
+
+      if (String(status) == "VALID") {
+        // Grant Access
+        Serial.println("Access Granted");
+        digitalWrite(RELAY_PIN, HIGH); // Activate relay
+        delay(5000);                  // Keep the relay active for 5 seconds
+        digitalWrite(RELAY_PIN, LOW); // Deactivate relay
+      } else {
+        Serial.println("Access Denied");
+      }
+    } else {
+      Serial.println("HTTP Request Failed");
+    }
+
+    http.end();
+  } else {
+    Serial.println("WiFi not connected");
+  }
+}
+
+
+MAIN.PY
+
 import os
+import re
 from urllib.parse import urlparse
 from dotenv import load_dotenv  # To load environment variables
 import psycopg2
@@ -111,20 +250,13 @@ def validate_user():
     if not phone_number:
         return jsonify({"status": "ERROR", "message": "Phone number is required"}), 400
 
-    # Debugging: print the incoming phone number
-    print(f"Received Phone Number: {phone_number}")
-
-    # Normalize phone number to the international format
-    if phone_number.startswith("0"):
-        phone_number = "+27" + phone_number[1:]
-
-    # Debugging: print the normalized phone number
-    print(f"Normalized Phone Number: {phone_number}")
+    # Clean up phone number (remove all non-numeric characters except the '+')
+    phone_number = re.sub(r'\D', '', phone_number)  # Removes all non-digit characters
 
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, access FROM users WHERE phone_number = %s", (phone_number,))
+        cursor.execute("SELECT name, access FROM users WHERE REPLACE(phone_number, '+', '') = %s", (phone_number,))
         result = cursor.fetchone()
         conn.close()
 
@@ -146,3 +278,4 @@ def serve_static(filename):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
+
