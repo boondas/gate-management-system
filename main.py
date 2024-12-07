@@ -3,9 +3,9 @@ import re
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import psycopg2
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash
-from flask import session  # Ensure this is imported
+from flask import send_from_directory  # Ensure this is imported for static files
 
 # Load environment variables
 load_dotenv()
@@ -13,21 +13,19 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Add a secure secret key in your .env file
 
-# Database Connection with SSL Mode
+# Database Connection
 def connect_to_database():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise Exception("DATABASE_URL is not set in environment variables.")
 
     url = urlparse(database_url)
-    print("Connecting to database with URL:", database_url)  # Debugging: Check the URL
     return psycopg2.connect(
         host=url.hostname,
         database=url.path[1:],  # Remove leading slash
         user=url.username,
         password=url.password,
-        port=url.port,
-        sslmode='require'  # Ensures the connection uses SSL for Railway
+        port=url.port
     )
 
 # Authentication Middleware
@@ -52,16 +50,20 @@ def login():
             cursor = conn.cursor()
             cursor.execute("SELECT password FROM admin_users WHERE username = %s", (username,))
             user = cursor.fetchone()
-            conn.close()
 
+            # Check if the user exists and password matches
             if user and check_password_hash(user[0], password):
                 session['username'] = username
                 flash("Login successful!", "success")
                 return redirect(url_for('home'))
             else:
                 flash("Invalid username or password.", "danger")
+                return render_template('login.html')
+
+            conn.close()
         except Exception as e:
-            return f"Error logging in: {str(e)}", 500
+            flash(f"Error logging in: {str(e)}", "danger")
+            return render_template('login.html')
 
     return render_template('login.html')
 
