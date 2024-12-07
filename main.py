@@ -3,7 +3,7 @@ import re
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import psycopg2
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import check_password_hash
 from flask import session  # Ensure this is imported
 
@@ -13,19 +13,21 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Add a secure secret key in your .env file
 
-# Database Connection
+# Database Connection with SSL Mode
 def connect_to_database():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise Exception("DATABASE_URL is not set in environment variables.")
 
     url = urlparse(database_url)
+    print("Connecting to database with URL:", database_url)  # Debugging: Check the URL
     return psycopg2.connect(
         host=url.hostname,
         database=url.path[1:],  # Remove leading slash
         user=url.username,
         password=url.password,
-        port=url.port
+        port=url.port,
+        sslmode='require'  # Ensures the connection uses SSL for Railway
     )
 
 # Authentication Middleware
@@ -80,9 +82,6 @@ def home():
         return render_template('index.html', users=users)
     except Exception as e:
         return f"Error fetching users: {str(e)}", 500
-
-# Other routes (add_user, edit_user, delete_user, validate_user)
-# Add the `@login_required` decorator to protect these routes.
 
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
@@ -176,8 +175,6 @@ def validate_user():
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
         
-      
-
 # Serve Static Files
 @app.route('/static/<path:filename>')
 def serve_static(filename):
