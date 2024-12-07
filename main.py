@@ -5,13 +5,15 @@ from dotenv import load_dotenv
 import psycopg2
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash
-from flask import send_from_directory  # Ensure this is imported for static files
+from flask import session  # Ensure this is imported
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Add a secure secret key in your .env file
+
+# Fetch the secret key from the environment, or use a default for development
+app.secret_key = os.getenv("SECRET_KEY")  # Ensure SECRET_KEY is set in .env file
 
 # Database Connection
 def connect_to_database():
@@ -31,7 +33,7 @@ def connect_to_database():
 # Authentication Middleware
 def login_required(func):
     def wrapper(*args, **kwargs):
-        if 'username' not in session:
+        if 'user' not in session:  # Change 'username' to 'user'
             flash("You need to log in to access this page.", "danger")
             return redirect(url_for('login'))
         return func(*args, **kwargs)
@@ -42,29 +44,23 @@ def login_required(func):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = request.form['username']
+        password = request.form['password']
+        print(f"Attempting login with username: {username}, password: {password}")
 
-        try:
-            conn = connect_to_database()
-            cursor = conn.cursor()
-            cursor.execute("SELECT password FROM admin_users WHERE username = %s", (username,))
-            user = cursor.fetchone()
+        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+        cursor = conn.cursor()
+        cursor.execute("SELECT password FROM admin_users WHERE username = %s", (username,))
+        result = cursor.fetchone()
+        print(f"Database result: {result}")
 
-            # Check if the user exists and password matches
-            if user and check_password_hash(user[0], password):
-                session['username'] = username
-                flash("Login successful!", "success")
-                return redirect(url_for('home'))
-            else:
-                flash("Invalid username or password.", "danger")
-                return render_template('login.html')
-
-            conn.close()
-        except Exception as e:
-            flash(f"Error logging in: {str(e)}", "danger")
-            return render_template('login.html')
-
+        if result and check_password_hash(result[0], password):
+            session['user'] = username
+            print("Login successful!")
+            return redirect(url_for('home'))
+        else:
+            flash("Invalid credentials, please try again.")
+            print("Login failed!")
     return render_template('login.html')
 
 @app.route('/logout')
@@ -176,7 +172,7 @@ def validate_user():
             return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
-        
+
 # Serve Static Files
 @app.route('/static/<path:filename>')
 def serve_static(filename):
