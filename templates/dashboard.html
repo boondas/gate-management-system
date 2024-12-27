@@ -1,112 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gate Management System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
-</head>
-<body>
-    <div class="container mt-5">
-        <h1 class="text-center">Gate Management System</h1>
+{% extends "base.html" %}
 
-        <!-- Add User Form -->
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <h3>Add Phone Number</h3>
-                <form id="addUserForm">
-                    <div class="mb-3">
-                        <label for="addPhoneNumber" class="form-label">Phone Number</label>
-                        <input type="text" class="form-control" id="addPhoneNumber" placeholder="+1234567890" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="addName" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="addName" placeholder="John Doe" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Add</button>
-                </form>
-            </div>
+{% block title %}Dashboard{% endblock %}
 
-            <!-- Remove User Form -->
-            <div class="col-md-6">
-                <h3>Remove Phone Number</h3>
-                <form id="removeUserForm">
-                    <div class="mb-3">
-                        <label for="removePhoneNumber" class="form-label">Phone Number</label>
-                        <input type="text" class="form-control" id="removePhoneNumber" placeholder="+1234567890" required>
-                    </div>
-                    <button type="submit" class="btn btn-danger">Remove</button>
-                </form>
-            </div>
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow p-4 mb-4">
+            <h2>Total Users</h2>
+            <p>{{ total_users }}</p>
         </div>
-
-        <!-- Authorized Phone Numbers Table -->
-        <div class="mt-5">
-            <h3>Authorized Phone Numbers</h3>
-            <table class="table table-striped">
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow p-4 mb-4">
+            <h2>Access Stats</h2>
+            <p>Granted: {{ access_granted }}</p>
+            <p>Denied: {{ access_denied }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow p-4 mb-4">
+            <h2>Recent Activity</h2>
+            <table class="table table-bordered">
                 <thead>
                     <tr>
-                        <th>Phone Number</th>
                         <th>Name</th>
+                        <th>Phone Number</th>
                         <th>Access</th>
                     </tr>
                 </thead>
-                <tbody id="userTableBody">
-                    <!-- Dynamic rows will be inserted here -->
+                <tbody>
+                    {% for activity in recent_activity %}
+                    <tr>
+                        <td>{{ activity[0] }}</td>
+                        <td>{{ activity[1] }}</td>
+                        <td>{{ "Granted" if activity[2] else "Denied" }}</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-
-    <script>
-        // Fetch and display users
-        function fetchUsers() {
-            fetch('/list')
-                .then(response => response.json())
-                .then(data => {
-                    const users = data.users;
-                    const userTableBody = document.getElementById('userTableBody');
-                    userTableBody.innerHTML = ''; // Clear existing rows
-
-                    users.forEach(user => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${user.phone_number}</td>
-                            <td>${user.name}</td>
-                            <td>${user.access ? 'Granted' : 'Denied'}</td>
-                        `;
-                        userTableBody.appendChild(row);
-                    });
-                });
-        }
-
-        // Add User
-        document.getElementById('addUserForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const phoneNumber = document.getElementById('addPhoneNumber').value;
-            const name = document.getElementById('addName').value;
-
-            fetch('/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone_number: phoneNumber, name: name, access: true })
-            }).then(() => fetchUsers());
-        });
-
-        // Remove User
-        document.getElementById('removeUserForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const phoneNumber = document.getElementById('removePhoneNumber').value;
-
-            fetch('/remove', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone_number: phoneNumber })
-            }).then(() => fetchUsers());
-        });
-
-        // Load users on page load
-        document.addEventListener('DOMContentLoaded', fetchUsers);
-    </script>
-</body>
-</html>
+</div>
+<div class="quick-links text-center mt-4">
+    <a href="/add_user" class="btn btn-primary">Add User</a>
+    <a href="/" class="btn btn-secondary">Manage Users</a>
+</div>
+{% endblock %}
