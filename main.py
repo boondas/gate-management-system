@@ -166,19 +166,62 @@ def validate_user():
         return jsonify({"status": "ERROR", "message": str(e)}), 500
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
-@login_required
 def delete_user(user_id):
     try:
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
-        conn.close()
-        flash("User deleted successfully!", "success")
-        return redirect(url_for('home'))
+        cur.close()
+        flash('User deleted successfully!', 'success')
     except Exception as e:
-        flash(f"Error deleting user: {e}", "danger")
-        return redirect(url_for('home'))
+        flash(f'Error deleting user: {e}', 'danger')
+    return redirect(url_for('index'))
+
+        
+@app.route('/add_user', methods=['GET', 'POST'])
+def add_user():
+    if request.method == 'POST':
+        phone_number = request.form['phone_number']
+        name = request.form['name']
+        access = request.form.get('access', 'No')  # Default to 'No' if unchecked
+        try:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO users (phone_number, name, access) VALUES (%s, %s, %s)", 
+                        (phone_number, name, access))
+            conn.commit()
+            cur.close()
+            flash('User added successfully!', 'success')
+            return redirect(url_for('index'))
+        except Exception as e:
+            flash(f'Error adding user: {e}', 'danger')
+            return redirect(url_for('add_user'))
+    return render_template('add_user.html')
+
+@app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
+def edit_user(user_id):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    
+    if request.method == 'POST':
+        phone_number = request.form['phone_number']
+        name = request.form['name']
+        access = request.form.get('access', 'No')
+        try:
+            cur = conn.cursor()
+            cur.execute("UPDATE users SET phone_number = %s, name = %s, access = %s WHERE id = %s", 
+                        (phone_number, name, access, user_id))
+            conn.commit()
+            cur.close()
+            flash('User updated successfully!', 'success')
+            return redirect(url_for('index'))
+        except Exception as e:
+            flash(f'Error updating user: {e}', 'danger')
+            return redirect(url_for('edit_user', user_id=user_id))
+    return render_template('edit_user.html', user=user)
+
+                
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
