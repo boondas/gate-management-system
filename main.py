@@ -139,89 +139,78 @@ def dashboard():
         flash(f"Error loading dashboard: {e}", "danger")
         return redirect(url_for('home'))
 
-@app.route('/validate_user', methods=['GET'])
-def validate_user():
-    phone_number = request.args.get('phone_number')
-    if not phone_number:
-        return jsonify({"status": "ERROR", "message": "Phone number is required"}), 400
-
-    phone_number = re.sub(r'\D', '', phone_number)
-
-    try:
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, access FROM users WHERE REPLACE(phone_number, '+', '') = %s", (phone_number,))
-        result = cursor.fetchone()
-        conn.close()
-
-        if result:
-            name, access = result
-            if access:
-                return jsonify({"status": "VALID", "message": f"Access granted for {name}"})
-            else:
-                return jsonify({"status": "DENIED", "message": "Access denied"})
-        else:
-            return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
-    except Exception as e:
-        return jsonify({"status": "ERROR", "message": str(e)}), 500
-
-@app.route('/delete_user/<int:user_id>', methods=['POST'])
-def delete_user(user_id):
-    try:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        conn.commit()
-        cur.close()
-        flash('User deleted successfully!', 'success')
-    except Exception as e:
-        flash(f'Error deleting user: {e}', 'danger')
-    return redirect(url_for('index'))
-
-        
 @app.route('/add_user', methods=['GET', 'POST'])
+@login_required
 def add_user():
     if request.method == 'POST':
-        phone_number = request.form['phone_number']
-        name = request.form['name']
-        access = request.form.get('access', 'No')  # Default to 'No' if unchecked
-        try:
-            cur = conn.cursor()
-            cur.execute("INSERT INTO users (phone_number, name, access) VALUES (%s, %s, %s)", 
-                        (phone_number, name, access))
-            conn.commit()
-            cur.close()
-            flash('User added successfully!', 'success')
-            return redirect(url_for('index'))
-        except Exception as e:
-            flash(f'Error adding user: {e}', 'danger')
+        phone_number = request.form.get('phone_number')
+        name = request.form.get('name')
+        access = request.form.get('access') == 'on'
+
+        if not phone_number or not name:
+            flash("Phone number and name are required!", "danger")
             return redirect(url_for('add_user'))
+
+        try:
+            conn = connect_to_database()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO users (phone_number, name, access) VALUES (%s, %s, %s) "
+                "ON CONFLICT (phone_number) DO UPDATE SET name = EXCLUDED.name, access = EXCLUDED.access",
+                (phone_number, name, access)
+            )
+            conn.commit()
+            conn.close()
+            flash("User added successfully!", "success")
+            return redirect(url_for('home'))
+        except Exception as e:
+            flash(f"Error adding user: {e}", "danger")
+
     return render_template('add_user.html')
 
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
 def edit_user(user_id):
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-    user = cur.fetchone()
-    cur.close()
-    
-    if request.method == 'POST':
-        phone_number = request.form['phone_number']
-        name = request.form['name']
-        access = request.form.get('access', 'No')
-        try:
-            cur = conn.cursor()
-            cur.execute("UPDATE users SET phone_number = %s, name = %s, access = %s WHERE id = %s", 
-                        (phone_number, name, access, user_id))
-            conn.commit()
-            cur.close()
-            flash('User updated successfully!', 'success')
-            return redirect(url_for('index'))
-        except Exception as e:
-            flash(f'Error updating user: {e}', 'danger')
-            return redirect(url_for('edit_user', user_id=user_id))
-    return render_template('edit_user.html', user=user)
+    try:
+        conn = connect_to_database()
+        cursor = conn.cursor()
 
-                
+        if request.method == 'POST':
+            phone_number = request.form.get('phone_number')
+            name = request.form.get('name')
+            access = request.form.get('access') == 'on'
+
+            cursor.execute(
+                "UPDATE users SET phone_number = %s, name = %s, access = %s WHERE id = %s",
+                (phone_number, name, access, user_id)
+            )
+            conn.commit()
+            conn.close()
+            flash("User updated successfully!", "success")
+            return redirect(url_for('home'))
+
+        cursor.execute("SELECT phone_number, name, access FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        conn.close()
+        return render_template('edit_user.html', user_id=user_id, user=user)
+    except Exception as e:
+        flash(f"Error editing user: {e}", "danger")
+        return redirect(url_for('home'))
+
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    try:
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        conn.close()
+        flash("User deleted successfully!", "success")
+        return redirect(url_for('home'))
+    except Exception as e:
+        flash(f"Error deleting user: {e}", "danger")
+        return redirect(url_for('home'))
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
