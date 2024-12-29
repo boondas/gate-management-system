@@ -20,6 +20,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=5)
 
 @app.before_request
 def check_session_timeout():
+    """Check for session timeout before every request."""
     if 'user' in session:
         last_activity = session.get('last_activity')
         current_time = datetime.now()
@@ -35,6 +36,7 @@ def check_session_timeout():
 
 # Database Connection Function
 def connect_to_database():
+    """Establish a connection to the PostgreSQL database."""
     try:
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
@@ -55,6 +57,7 @@ def connect_to_database():
 
 # Authentication Middleware
 def login_required(func):
+    """Ensure a user is logged in before accessing a route."""
     def wrapper(*args, **kwargs):
         if 'user' not in session:
             flash("You need to log in to access this page.", "danger")
@@ -66,6 +69,7 @@ def login_required(func):
 # Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Handle user login."""
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -90,22 +94,23 @@ def login():
 
 @app.route('/logout')
 def logout():
+    """Log the user out and clear session."""
     session.clear()
     return redirect(url_for('login'))
 
 @app.route('/')
 @login_required
 def home():
+    """Render the home page with user data."""
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
-        cursor.execute("SELECT phone_number, name, access FROM users ORDER BY id ASC")  # Fetch all users
+        cursor.execute("SELECT id, phone_number, name, access FROM users ORDER BY id ASC")
         users = cursor.fetchall()
         conn.close()
 
         # Add a sequential ID for display
-        users_with_index = [(index + 1, *user) for index, user in enumerate(users)]
-
+        users_with_index = [(index + 1, *user[1:]) for index, user in enumerate(users)]
         return render_template('index.html', users=users_with_index)
     except Exception as e:
         flash(f"Error fetching users: {e}", "danger")
@@ -114,6 +119,7 @@ def home():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    """Render the dashboard with statistics and recent activity."""
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
@@ -142,6 +148,7 @@ def dashboard():
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
 def add_user():
+    """Add a new user to the database."""
     if request.method == 'POST':
         phone_number = request.form.get('phone_number')
         name = request.form.get('name')
@@ -171,6 +178,7 @@ def add_user():
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
+    """Edit an existing user's details."""
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
@@ -200,6 +208,7 @@ def edit_user(user_id):
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
+    """Delete a user from the database."""
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
@@ -211,6 +220,33 @@ def delete_user(user_id):
     except Exception as e:
         flash(f"Error deleting user: {e}", "danger")
         return redirect(url_for('home'))
+
+@app.route('/validate_user', methods=['GET'])
+def validate_user():
+    """Validate phone numbers via HTTP GET request."""
+    phone_number = request.args.get('phone_number')
+    if not phone_number:
+        return jsonify({"status": "ERROR", "message": "Phone number is required"}), 400
+
+    phone_number = re.sub(r'\D', '', phone_number)
+
+    try:
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, access FROM users WHERE REPLACE(phone_number, '+', '') = %s", (phone_number,))
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            name, access = result
+            if access:
+                return jsonify({"status": "VALID", "message": f"Access granted for {name}"})
+            else:
+                return jsonify({"status": "DENIED", "message": "Access denied"})
+        else:
+            return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
+    except Exception as e:
+        return jsonify({"status": "ERROR", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
