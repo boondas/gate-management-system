@@ -101,20 +101,17 @@ def logout():
 @app.route('/')
 @login_required
 def home():
-    """Render the home page with user data."""
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, phone_number, name, access FROM users ORDER BY id ASC")
+        cursor.execute("SELECT id, phone_number, name, access FROM users ORDER BY id ASC")  # Fetch actual IDs
         users = cursor.fetchall()
         conn.close()
-
-        # Add a sequential ID for display
-        users_with_index = [(index + 1, *user[1:]) for index, user in enumerate(users)]
-        return render_template('index.html', users=users_with_index)
+        return render_template('index.html', users=users)  # Pass raw user data (with actual IDs)
     except Exception as e:
         flash(f"Error fetching users: {e}", "danger")
         return redirect(url_for('login'))
+
 
 @app.route('/dashboard')
 @login_required
@@ -204,11 +201,10 @@ def edit_user(user_id):
     except Exception as e:
         flash(f"Error editing user: {e}", "danger")
         return redirect(url_for('home'))
-
+        
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
-    """Delete a user from the database."""
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
@@ -216,9 +212,11 @@ def delete_user(user_id):
         conn.commit()
         conn.close()
         flash("User deleted successfully!", "success")
+        print(f"Deleted user with ID {user_id}")  # Add debug log
         return redirect(url_for('home'))
     except Exception as e:
         flash(f"Error deleting user: {e}", "danger")
+        print(f"Error deleting user with ID {user_id}: {e}")  # Add debug log
         return redirect(url_for('home'))
 
 @app.route('/validate_user', methods=['GET'])
