@@ -245,6 +245,28 @@ def validate_user():
             return jsonify({"status": "INVALID", "message": "Unauthorized phone number"})
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
+        
+        # Auto-create admin user if not exists
+def create_default_admin():
+    try:
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM admin_users")
+        count = cursor.fetchone()[0]
+        if count == 0:
+            from werkzeug.security import generate_password_hash
+            hashed = generate_password_hash("Admin123!")
+            cursor.execute(
+                "INSERT INTO admin_users (username, password) VALUES (%s, %s)",
+                ("admin", hashed)
+            )
+            conn.commit()
+            print("Default admin created: admin / Admin123!")
+        conn.close()
+    except Exception as e:
+        print(f"Could not create default admin: {e}")
+
+create_default_admin()  # Run on startup
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
