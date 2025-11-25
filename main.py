@@ -294,6 +294,13 @@ def validate_user():
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
 
+# ---------------------------
+#   HEALTH CHECK ROUTE
+# ---------------------------
+@app.route("/health")
+def health():
+    return jsonify({"status": "OK"}), 200
+
 
 # ---------------------------
 # CREATE DEFAULT ADMIN
