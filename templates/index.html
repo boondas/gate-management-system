@@ -6,8 +6,10 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <input type="text" id="searchBar" placeholder="Search by Name or Phone Number" onkeyup="searchTable()" class="form-control w-50">
     <div>
-        <a href="{{ url_for('add_user') }}" class="btn btn-primary">Add User</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+		<a href="{{ url_for('add_user') }}" class="btn btn-primary">Add User</a>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Dashboard</a>
+		
     </div>
 </div>
 <div class="table-responsive">

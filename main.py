@@ -9,40 +9,7 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for, s
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import timedelta, datetime
 
-# ---------------------------
-# CREATE DEFAULT ADMIN (SECURE)
-# ---------------------------
-def create_default_admin():
-    try:
-        conn = connect_to_database()
-        cur = conn.cursor()
 
-        cur.execute("SELECT COUNT(*) FROM admin_users")
-        count = cur.fetchone()[0]
-
-        if count == 0:
-            # Generate a random secure password
-            alphabet = string.ascii_letters + string.digits + string.punctuation
-            random_password = ''.join(secrets.choice(alphabet) for i in range(16))
-
-            # Hash the password before storing
-            pwd_hash = generate_password_hash(random_password)
-
-            cur.execute(
-                "INSERT INTO admin_users (username, password) VALUES (%s, %s)",
-                ("admin", pwd_hash)
-            )
-            conn.commit()
-
-            # Log the generated password securely
-            print("Default admin created.")
-            print(f"Username: admin")
-            print(f"Password: {random_password} (please change after first login)")
-
-        conn.close()
-
-    except Exception as e:
-        print(f"Admin creation error: {e}")
 
 
 # Load environment variables
@@ -135,7 +102,7 @@ def login():
             if result and check_password_hash(result[0], password):
                 session["user"] = username
                 session["last_activity"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                return redirect(url_for("home"))
+                return redirect(url_for("dashboard"))
             else:
                 flash("Invalid credentials.", "danger")
 
@@ -143,6 +110,38 @@ def login():
             flash(f"Login error: {e}", "danger")
 
     return render_template("login.html")
+    
+ 
+# ---------------------------
+#   RESET PASSWORD
+# ---------------------------   
+    
+@app.route("/reset_password", methods=["GET", "POST"])
+def reset_password():
+    if request.method == "POST":
+        username = request.form.get("username")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "danger")
+            return redirect(url_for("reset_password"))
+
+        try:
+            conn = connect_to_database()
+            cur = conn.cursor()
+            hashed = generate_password_hash(new_password, method="pbkdf2:sha256")
+            cur.execute("UPDATE admin_users SET password = %s WHERE username = %s", (hashed, username))
+            conn.commit()
+            conn.close()
+
+            flash("Password reset successful!", "success")
+            return redirect(url_for("login"))
+        except Exception as e:
+            flash(f"Error resetting password: {e}", "danger")
+
+    return render_template("reset_password.html")
+
 
 
 @app.route("/logout")
@@ -204,6 +203,46 @@ def dashboard():
     except Exception as e:
         flash(f"Dashboard error: {e}", "danger")
         return redirect(url_for("home"))
+
+
+# ---------------------------
+#   CHANGE PASSWORD ROUTE
+# ---------------------------
+@app.route("/change_password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_password = request.form.get("current_password")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        try:
+            conn = connect_to_database()
+            cur = conn.cursor()
+            cur.execute("SELECT password FROM admin_users WHERE username = %s", (session["user"],))
+            result = cur.fetchone()
+
+            if not result or not check_password_hash(result[0], current_password):
+                flash("Current password is incorrect.", "danger")
+                return redirect(url_for("change_password"))
+
+            if new_password != confirm_password:
+                flash("New passwords do not match.", "danger")
+                return redirect(url_for("change_password"))
+
+            hashed = generate_password_hash(new_password, method="pbkdf2:sha256")
+            cur.execute("UPDATE admin_users SET password = %s WHERE username = %s", (hashed, session["user"]))
+            conn.commit()
+            conn.close()
+
+            flash("Password updated successfully!", "success")
+            return redirect(url_for("home"))
+
+        except Exception as e:
+            flash(f"Error updating password: {e}", "danger")
+
+    return render_template("change_password.html")
+
 
 
 # ---------------------------
@@ -339,33 +378,6 @@ def validate_user():
 def health():
     return jsonify({"status": "OK"}), 200
 
-
-# ---------------------------
-# CREATE DEFAULT ADMIN
-# ---------------------------
-def create_default_admin():
-    try:
-        conn = connect_to_database()
-        cur = conn.cursor()
-
-        cur.execute("SELECT COUNT(*) FROM admin_users")
-        count = cur.fetchone()[0]
-
-        if count == 0:
-            pwd = generate_password_hash("Admin123!")
-            cur.execute("INSERT INTO admin_users (username, password) VALUES (%s, %s)",
-                        ("admin", pwd))
-            conn.commit()
-            print("Default admin created.")
-
-        conn.close()
-
-    except Exception as e:
-        print(f"Admin creation error: {e}")
-
-
-# Run admin creation
-create_default_admin()
 
 
 # ---------------------------
