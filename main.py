@@ -1,11 +1,49 @@
 import os
 import re
+import secrets
+import string
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import psycopg2
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import timedelta, datetime
+
+# ---------------------------
+# CREATE DEFAULT ADMIN (SECURE)
+# ---------------------------
+def create_default_admin():
+    try:
+        conn = connect_to_database()
+        cur = conn.cursor()
+
+        cur.execute("SELECT COUNT(*) FROM admin_users")
+        count = cur.fetchone()[0]
+
+        if count == 0:
+            # Generate a random secure password
+            alphabet = string.ascii_letters + string.digits + string.punctuation
+            random_password = ''.join(secrets.choice(alphabet) for i in range(16))
+
+            # Hash the password before storing
+            pwd_hash = generate_password_hash(random_password)
+
+            cur.execute(
+                "INSERT INTO admin_users (username, password) VALUES (%s, %s)",
+                ("admin", pwd_hash)
+            )
+            conn.commit()
+
+            # Log the generated password securely
+            print("Default admin created.")
+            print(f"Username: admin")
+            print(f"Password: {random_password} (please change after first login)")
+
+        conn.close()
+
+    except Exception as e:
+        print(f"Admin creation error: {e}")
+
 
 # Load environment variables
 load_dotenv()
